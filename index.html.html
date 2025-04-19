@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Calcolatore Spese Avanzato con Sconti</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    input, select, button { padding: 8px; margin: 5px 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h2>Calcolatore Spese Avanzato</h2>
+
+  <label>Nome articolo:</label><br>
+  <input type="text" id="nomeArticolo"><br>
+
+  <label>Prezzo unitario (€):</label><br>
+  <input type="number" id="prezzoUnitario" step="0.01"><br>
+
+  <label>Quantità:</label><br>
+  <input type="number" id="quantita" step="1"><br>
+
+  <label>Tipo di sconto:</label><br>
+  <select id="tipoSconto" onchange="aggiornaSconto()">
+    <option value="nessuno">Nessuno</option>
+    <option value="percentuale">Percentuale (%)</option>
+    <option value="valore">Valore fisso (€)</option>
+    <option value="promo">Prendi X, Paghi Y</option>
+  </select><br>
+
+  <div id="campoSconto"></div>
+
+  <label>Acquirente:</label><br>
+  <input type="text" id="persona"><br>
+
+  <button onclick="aggiungiSpesa()">Aggiungi Spesa</button>
+
+  <h3>Spese:</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Articolo</th>
+        <th>Prezzo</th>
+        <th>Quantità</th>
+        <th>Sconto</th>
+        <th>Totale</th>
+        <th>Acquirente</th>
+      </tr>
+    </thead>
+    <tbody id="speseTable"></tbody>
+  </table>
+
+  <button onclick="calcolaDivisione()">Calcola Totali per Persona</button>
+
+  <h3>Totali per Persona:</h3>
+  <ul id="totaliPersone"></ul>
+
+  <script>
+    let spese = [];
+
+    function aggiornaSconto() {
+      const tipo = document.getElementById('tipoSconto').value;
+      const campo = document.getElementById('campoSconto');
+      campo.innerHTML = "";
+
+      if (tipo === "percentuale") {
+        campo.innerHTML = '<label>Sconto (%):</label><br><input type="number" id="scontoPercentuale" step="0.01"><br>';
+      } else if (tipo === "valore") {
+        campo.innerHTML = '<label>Sconto (€):</label><br><input type="number" id="scontoValore" step="0.01"><br>';
+      } else if (tipo === "promo") {
+        campo.innerHTML = `
+          <label>Prendi:</label><br><input type="number" id="promoX" step="1"><br>
+          <label>Paghi:</label><br><input type="number" id="promoY" step="1"><br>
+        `;
+      }
+    }
+
+    function aggiungiSpesa() {
+      const nome = document.getElementById('nomeArticolo').value;
+      const prezzo = parseFloat(document.getElementById('prezzoUnitario').value);
+      const quantita = parseInt(document.getElementById('quantita').value);
+      const tipoSconto = document.getElementById('tipoSconto').value;
+      const persona = document.getElementById('persona').value;
+
+      if (!nome || isNaN(prezzo) || isNaN(quantita) || !persona) {
+        alert("Compila tutti i campi obbligatori.");
+        return;
+      }
+
+      let totale = prezzo * quantita;
+      let descrizioneSconto = "Nessuno";
+
+      if (tipoSconto === "percentuale") {
+        const sconto = parseFloat(document.getElementById('scontoPercentuale').value);
+        if (!isNaN(sconto)) {
+          totale *= (1 - sconto / 100);
+          descrizioneSconto = sconto + "%";
+        }
+      } else if (tipoSconto === "valore") {
+        const scontoValore = parseFloat(document.getElementById('scontoValore').value);
+        if (!isNaN(scontoValore)) {
+          totale -= scontoValore;
+          descrizioneSconto = "€" + scontoValore.toFixed(2);
+        }
+      } else if (tipoSconto === "promo") {
+        const x = parseInt(document.getElementById('promoX').value);
+        const y = parseInt(document.getElementById('promoY').value);
+        if (x > 0 && y > 0 && quantita >= x) {
+          const gruppi = Math.floor(quantita / x);
+          const resto = quantita % x;
+          const pagati = gruppi * y + resto;
+          totale = pagati * prezzo;
+          descrizioneSconto = `Prendi ${x}, Paghi ${y}`;
+        }
+      }
+
+      totale = Math.max(0, totale); // Evita totali negativi
+
+      spese.push({ nome, prezzo, quantita, sconto: descrizioneSconto, totale, persona });
+
+      const table = document.getElementById('speseTable');
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${nome}</td><td>€${prezzo.toFixed(2)}</td><td>${quantita}</td><td>${descrizioneSconto}</td><td>€${totale.toFixed(2)}</td><td>${persona}</td>`;
+      table.appendChild(row);
+
+      // Reset campi
+      document.getElementById('nomeArticolo').value = '';
+      document.getElementById('prezzoUnitario').value = '';
+      document.getElementById('quantita').value = '';
+      document.getElementById('tipoSconto').value = 'nessuno';
+      document.getElementById('campoSconto').innerHTML = '';
+      document.getElementById('persona').value = '';
+    }
+
+    function calcolaDivisione() {
+      const totali = {};
+
+      spese.forEach(item => {
+        if (!totali[item.persona]) {
+          totali[item.persona] = 0;
+        }
+        totali[item.persona] += item.totale;
+      });
+
+      const lista = document.getElementById('totaliPersone');
+      lista.innerHTML = '';
+      for (let persona in totali) {
+        const li = document.createElement('li');
+        li.textContent = `${persona}: €${totali[persona].toFixed(2)}`;
+        lista.appendChild(li);
+      }
+    }
+  </script>
+</body>
+</html>
